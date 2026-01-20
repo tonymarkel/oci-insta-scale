@@ -1,315 +1,118 @@
-![Insta-Scale](images/insta-scale.png)
-# OCI Instance Pool Manager
-_Generated using an LLM_
+# OCI Instance Scaler
 
-A Go program to create, scale, and manage Oracle Cloud Infrastructure (OCI) instance pools with an arbitrary number of virtual machines.
-
-## Features
-
-- ✅ Create instance pools with configurable VM count
-- ✅ Scale existing instance pools up or down
-- ✅ Terminate instance pools
-- ✅ Support for flexible shapes with custom OCPU and memory
-- ✅ Load balancer integration
-- ✅ Multi-availability domain placement
-- ✅ Fault domain distribution
-- ✅ Custom SSH keys, user data, and metadata
-- ✅ Tagging support (freeform and defined tags)
+A Go program that provisions multiple OCI compute instances in parallel and can terminate them in bulk.
 
 ## Prerequisites
 
-1. **OCI Account**: An active Oracle Cloud Infrastructure account
-2. **Go**: Go 1.21 or later installed
-3. **OCI CLI Configuration**: Your OCI credentials configured
+1. **OCI Account**: You need an active OCI account
+2. **OCI CLI Configuration**: Set up OCI CLI credentials at `~/.oci/config`
+3. **Go 1.21+**: Ensure Go is installed
 
-### OCI Authentication Setup
+## Setup
 
-You need the following information from your OCI account:
-
-- **Tenancy OCID**: Your OCI tenancy ID
-- **User OCID**: Your user ID
-- **API Key Fingerprint**: From your API key
-- **Private Key Path**: Path to your API private key file
-- **Region**: OCI region (e.g., `us-phoenix-1`)
-
-You can find these in the OCI Console under your user profile settings.
-
-## Installation
-
-1. Clone this repository:
-```bash
-git clone https://github.com/tonymarkel/oci-insta-scale
-cd oci-insta-scale
-```
-
-2. Install dependencies:
+Install dependencies:
 ```bash
 go mod download
 ```
 
-3. Build the program:
+## Building
+
 ```bash
 go build -o oci-insta-scale
 ```
 
-## Configuration
-
-Create a `config.yaml` file with your OCI settings. See `config.example.yaml` for a complete example.
-
-### Minimal Configuration
-
-```yaml
-# OCI Authentication
-tenancy_ocid: "ocid1.tenancy.oc1..aaaaa..."
-user_ocid: "ocid1.user.oc1..aaaaa..."
-fingerprint: "aa:bb:cc:dd:ee:ff:00:11:22:33:44:55:66:77:88:99"
-private_key_path: "/path/to/.oci/oci_api_key.pem"
-region: "us-phoenix-1"
-
-# Compartment
-compartment_id: "ocid1.compartment.oc1..aaaaa..."
-
-# Instance Pool Configuration
-instance_pool:
-  display_name: "my-instance-pool"
-  size: 3  # Number of VMs
-  
-  instance_configuration:
-    display_name: "my-instance-config"
-    shape: "VM.Standard.E4.Flex"
-    shape_config:
-      ocpus: 1
-      memory_in_gbs: 16
-    image_id: "ocid1.image.oc1.phx.aaaaa..."  # OS image
-    subnet_id: "ocid1.subnet.oc1.phx.aaaaa..."
-    assign_public_ip: true
-    ssh_authorized_keys: "ssh-rsa AAAAB3NzaC1yc2E..."
-  
-  placement:
-    - availability_domain: "IYiP:PHX-AD-1"
-```
-
 ## Usage
 
-### Create an Instance Pool
-
-Create a new instance pool with the number of VMs specified in the config:
+### Creating Instances
 
 ```bash
-./oci-insta-scale -config config.yaml -action create
+./oci-insta-scale \
+  -instances 5 \
+  -name my-instance \
+  -compartment <COMPARTMENT_ID> \
+  -subnet <SUBNET_ID> \
+  -image <IMAGE_ID> \
+  -ad <AVAILABILITY_DOMAIN> \
+  -shape VM.Standard.E4.Flex \
+  -output instances.txt
 ```
 
-Override the instance count from command line:
+#### Flags for Creation
+
+- `-instances` (int): Number of instances to create (default: 1)
+- `-name` (string): Base name for instances (default: "oci-instance")
+- `-compartment` (string, required): OCI Compartment ID
+- `-subnet` (string, required): OCI Subnet ID
+- `-image` (string, required): OCI Image ID
+- `-ad` (string, required): Availability Domain (e.g., `iad-ad-1` or `rgiR:US-ASHBURN-AD-2`)
+- `-shape` (string): Instance shape (default: "VM.Standard.E4.Flex")
+- `-output` (string): Output file for instance OCIDs (default: "instances.txt")
+
+#### Example
 
 ```bash
-./oci-insta-scale -config config.yaml -action create
+./oci-insta-scale \
+  -instances 10 \
+  -name web-server \
+  -compartment ocid1.compartment.oc1..example \
+  -subnet ocid1.subnet.oc1..example \
+  -image ocid1.image.oc1..example \
+  -ad iad-ad-1 \
+  -output my-instances.txt
 ```
 
-### Scale an Existing Instance Pool
+The program will create instances and write their OCIDs to the specified output file (default: `instances.txt`).
 
-Scale an instance pool to a different size:
+### Terminating Instances
+
+Terminate all instances listed in a file:
 
 ```bash
-./oci-insta-scale -config config.yaml -action scale \
-  -pool-id ocid1.instancepool.oc1.phx.aaaaa... \
+./oci-insta-scale terminate \
+  -file instances.txt \
+  -compartment <COMPARTMENT_ID> \
+  -parallel 10
 ```
 
-### Terminate an Instance Pool
+#### Flags for Termination
 
-Terminate an instance pool and all its instances:
+- `-file` (string): File containing instance OCIDs, one per line (default: "instances.txt")
+- `-compartment` (string, required): OCI Compartment ID
+- `-parallel` (int): Number of parallel termination operations (default: 10)
+
+#### Example
 
 ```bash
-./oci-insta-scale -config config.yaml -action terminate \
-  -pool-id ocid1.instancepool.oc1.phx.aaaaa...
+./oci-insta-scale terminate \
+  -file my-instances.txt \
+  -compartment ocid1.compartment.oc1..example \
+  -parallel 20
 ```
 
-## Command-Line Options
+## How It Works
 
-| Flag | Description | Default |
-|------|-------------|---------|
-| `-config` | Path to configuration file | `config.yaml` |
-| `-action` | Action to perform: `create`, `scale`, `terminate` | `create` |
-| `-count` | Number of instances (overrides config) | 0 |
-| `-compartment` | Compartment OCID (overrides config) | "" |
-| `-name` | Instance pool display name (overrides config) | "" |
-| `-pool-id` | Instance pool ID (for scale/terminate) | "" |
+- **Parallel Execution**: Uses goroutines and `sync.WaitGroup` for concurrent operations
+- **OCI SDK**: Uses the official OCI Go SDK v65
+- **Configuration**: Reads OCI credentials from standard `~/.oci/config`
+- **Instance Tracking**: Saves instance OCIDs to a file for later reference
+- **Bulk Termination**: Terminate multiple instances concurrently with configurable parallelism
+- **Results Tracking**: Displays real-time progress and summary
 
-## Advanced Configuration
+## Instance File Format
 
-### Flexible Shapes
-
-For flexible shapes, specify OCPUs and memory:
-
-```yaml
-instance_configuration:
-  shape: "VM.Standard.E4.Flex"
-  shape_config:
-    ocpus: 2
-    memory_in_gbs: 32
-```
-
-### Multiple Availability Domains
-
-Distribute instances across multiple ADs:
-
-```yaml
-placement:
-  - availability_domain: "IYiP:PHX-AD-1"
-    fault_domains: ["FAULT-DOMAIN-1", "FAULT-DOMAIN-2"]
-  - availability_domain: "IYiP:PHX-AD-2"
-  - availability_domain: "IYiP:PHX-AD-3"
-```
-
-### Load Balancer Integration
-
-Attach instances to a load balancer:
-
-```yaml
-instance_pool:
-  load_balancers:
-    - load_balancer_id: "ocid1.loadbalancer.oc1.phx.aaaaa..."
-      backend_set_name: "backend-set-1"
-      port: 80
-      vnic_selection: "PrimaryVnic"
-```
-
-### User Data and Cloud-Init
-
-Provide cloud-init script (base64 encoded):
-
-```yaml
-instance_configuration:
-  user_data: "IyEvYmluL2Jhc2gKZWNobyAiSGVsbG8gV29ybGQi"
-```
-
-### Custom Metadata
-
-Add custom metadata to instances:
-
-```yaml
-instance_configuration:
-  metadata:
-    application: "web-server"
-    environment: "production"
-```
-
-### Tagging
-
-Add freeform or defined tags:
-
-```yaml
-instance_configuration:
-  freeform_tags:
-    Project: "MyProject"
-    CostCenter: "12345"
-  defined_tags:
-    Operations:
-      Environment: "Production"
-```
-
-## Examples
-
-### Example 1: Simple Web Server Pool
-
-Create a pool of 5 web servers:
-
-```bash
-./oci-insta-scale -config web-config.yaml -action create -count 5
-```
-
-### Example 2: Scale Up During Peak Hours
-
-Scale from 3 to 10 instances:
-
-```bash
-./oci-insta-scale -config config.yaml -action scale \
-  -pool-id ocid1.instancepool.oc1.phx.aaaaa... \
-  -count 10
-```
-
-### Example 3: Scale Down After Peak
-
-Scale back down to 3 instances:
-
-```bash
-./oci-insta-scale -config config.yaml -action scale \
-  -pool-id ocid1.instancepool.oc1.phx.aaaaa... \
-  -count 3
-```
-
-## Finding Required OCIDs
-
-### Image OCID
-
-List available images in your region:
-
-```bash
-oci compute image list --compartment-id <compartment-ocid> \
-  --operating-system "Oracle Linux" --shape "VM.Standard.E4.Flex"
-```
-
-### Subnet OCID
-
-List subnets in your VCN:
-
-```bash
-oci network subnet list --compartment-id <compartment-ocid> \
-  --vcn-id <vcn-ocid>
-```
-
-### Availability Domains
-
-List availability domains:
-
-```bash
-oci iam availability-domain list --compartment-id <compartment-ocid>
-```
-
-## Troubleshooting
-
-### Authentication Errors
-
-- Verify your API key is valid and uploaded to OCI
-- Check that the private key file path is correct
-- Ensure the fingerprint matches your API key
-
-### Permission Errors
-
-- Verify your user has permissions to create instance pools
-- Check compartment access policies
-- Ensure you have quota available for the requested resources
-
-### Configuration Errors
-
-The program validates your configuration and will report specific errors if required fields are missing.
-
-## Project Structure
+The output file contains one instance OCID per line:
 
 ```
-.
-├── main.go           # Main entry point and CLI handling
-├── config.go         # Configuration loading and validation
-├── oci_client.go     # OCI SDK client wrapper and operations
-├── go.mod            # Go module dependencies
-├── config.yaml       # Your configuration file (create this)
-└── README.md         # This file
+ocid1.instance.oc1.iad.example1
+ocid1.instance.oc1.iad.example2
+ocid1.instance.oc1.iad.example3
 ```
 
-## Dependencies
+You can edit this file to remove instances you want to keep before running the terminate command.
 
-- `github.com/oracle/oci-go-sdk/v65` - Oracle Cloud Infrastructure Go SDK
-- `gopkg.in/yaml.v3` - YAML configuration parsing
+## Notes
 
-## License
-
-MIT License
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-## Support
-
-For issues related to:
-- **OCI SDK**: See [OCI Go SDK Documentation](https://docs.oracle.com/en-us/iaas/tools/go/latest/)
-- **OCI Instance Pools**: See [OCI Instance Pools Documentation](https://docs.oracle.com/en-us/iaas/Content/Compute/Tasks/creatinginstancepool.htm)
+- Ensure your OCI credentials are properly configured
+- The parallelism level can be adjusted for both creation and termination
+- Default shape configuration: 1 OCPU, 8GB memory (adjustable in code)
+- Instance files support comments (lines starting with #) which are ignored during termination
