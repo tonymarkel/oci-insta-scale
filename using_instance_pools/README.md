@@ -1,4 +1,3 @@
-![Insta-Scale](images/insta-scale.png)
 # OCI Instance Pool Manager
 _Generated using an LLM_
 
