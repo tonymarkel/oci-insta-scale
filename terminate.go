@@ -8,6 +8,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/oracle/oci-go-sdk/v65/common"
 	"github.com/oracle/oci-go-sdk/v65/core"
@@ -65,6 +66,7 @@ func runTerminate() {
 	semaphore := make(chan struct{}, *parallel)
 
 	for _, instanceID := range instanceIDs {
+		time.Sleep(1500 * time.Millisecond) // Slight delay to avoid overwhelming the API
 		wg.Add(1)
 		go func(id string) {
 			defer wg.Done()
