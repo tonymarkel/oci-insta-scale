@@ -259,3 +259,49 @@ func (c *OCIClient) ListInstancePoolInstances(ctx context.Context, compartmentID
 
 	return resp.Items, nil
 }
+
+// DetachAndTerminateInstance detaches an instance from the pool and terminates it
+// This reduces the pool size by 1 without replacement
+func (c *OCIClient) DetachAndTerminateInstance(ctx context.Context, instancePoolID, instanceID, compartmentID string) error {
+	// Step 1: Get current pool size
+	pool, err := c.GetInstancePool(ctx, instancePoolID)
+	if err != nil {
+		return fmt.Errorf("failed to get instance pool: %w", err)
+	}
+
+	currentSize := *pool.Size
+	if currentSize <= 0 {
+		return fmt.Errorf("pool size is already 0")
+	}
+
+	// Step 2: Detach the instance from the pool
+	fmt.Printf("Detaching instance from pool (current size: %d)...\n", currentSize)
+	detachReq := core.DetachInstancePoolInstanceRequest{
+		InstancePoolId: common.String(instancePoolID),
+		DetachInstancePoolInstanceDetails: core.DetachInstancePoolInstanceDetails{
+			InstanceId:    common.String(instanceID),
+			IsDecrementSize: common.Bool(true), // This reduces the pool size
+		},
+	}
+
+	_, err = c.ComputeManagementClient.DetachInstancePoolInstance(ctx, detachReq)
+	if err != nil {
+		return fmt.Errorf("failed to detach instance: %w", err)
+	}
+
+	fmt.Printf("Instance detached. New pool size: %d\n", currentSize-1)
+
+	// Step 3: Terminate the instance
+	fmt.Println("Terminating the detached instance...")
+	terminateReq := core.TerminateInstanceRequest{
+		InstanceId: common.String(instanceID),
+	}
+
+	_, err = c.ComputeClient.TerminateInstance(ctx, terminateReq)
+	if err != nil {
+		return fmt.Errorf("failed to terminate instance: %w", err)
+	}
+
+	fmt.Println("Instance termination initiated.")
+	return nil
+}

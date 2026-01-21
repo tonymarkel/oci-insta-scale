@@ -15,7 +15,8 @@ func main() {
 		compartmentID   = flag.String("compartment", "", "Compartment OCID (overrides config)")
 		displayName     = flag.String("name", "", "Instance pool display name (overrides config)")
 		instancePoolID  = flag.String("pool-id", "", "Instance pool ID to scale (optional)")
-		action          = flag.String("action", "create", "Action to perform: create, scale, terminate")
+		instanceID      = flag.String("instance-id", "", "Instance ID to detach and terminate")
+		action          = flag.String("action", "create", "Action to perform: create, scale, terminate, delete, list")
 	)
 	flag.Parse()
 
@@ -47,6 +48,9 @@ func main() {
 	// Perform action
 	switch *action {
 	case "create":
+		if config.InstancePool.Size <= 0 {
+			log.Fatal("Instance pool size must be greater than 0. Use --count to specify the number of instances.")
+		}
 		fmt.Printf("Creating instance pool with %d instances...\n", config.InstancePool.Size)
 		pool, err := client.CreateInstancePool(ctx, config)
 		if err != nil {
@@ -58,6 +62,9 @@ func main() {
 	case "scale":
 		if *instancePoolID == "" {
 			log.Fatal("--pool-id is required for scale action")
+		}
+		if config.InstancePool.Size <= 0 {
+			log.Fatal("Instance pool size must be greater than 0. Use --count to specify the number of instances.")
 		}
 		fmt.Printf("Scaling instance pool %s to %d instances...\n", *instancePoolID, config.InstancePool.Size)
 		err := client.ScaleInstancePool(ctx, *instancePoolID, config.InstancePool.Size)
@@ -77,7 +84,41 @@ func main() {
 		}
 		fmt.Printf("Successfully terminated instance pool\n")
 
+	case "delete":
+		if *instancePoolID == "" {
+			log.Fatal("--pool-id is required for delete action")
+		}
+		fmt.Printf("Deleting instance pool %s...\n", *instancePoolID)
+		err := client.DeleteInstancePool(ctx, *instancePoolID)
+		if err != nil {
+			log.Fatalf("Failed to delete instance pool: %v", err)
+		}
+		fmt.Printf("Successfully deleted instance pool\n")
+		}
+		fmt.Printf("Successfully detached and terminated instance. Pool size reduced by 1.\n")
+
+	case "list":
+		if *instancePoolID == "" {
+			log.Fatal("--pool-id is required for list action")
+		}
+		fmt.Printf("Listing instances in pool %s...\n", *instancePoolID)
+		instances, err := client.ListInstancePoolInstances(ctx, config.CompartmentID, *instancePoolID)
+		if err != nil {
+			log.Fatalf("Failed to list instances: %v", err)
+		}
+		fmt.Printf("\nFound %d instances:\n", len(instances))
+		for i, inst := range instances {
+			fmt.Printf("%d. ID: %s\n", i+1, *inst.Id)
+			fmt.Printf("   Display Name: %s\n", *inst.DisplayName)
+			fmt.Printf("   State: %s\n", inst.State)
+			fmt.Printf("   AD: %s\n", *inst.AvailabilityDomain)
+			if inst.FaultDomain != nil {
+				fmt.Printf("   Fault Domain: %s\n", *inst.FaultDomain)
+			}
+			fmt.Println()
+		}
+
 	default:
-		log.Fatalf("Unknown action: %s. Valid actions: create, scale, terminate", *action)
+		log.Fatalf("Unknown action: %s. Valid actions: create, scale, terminate, delete, list", *action)
 	}
 }

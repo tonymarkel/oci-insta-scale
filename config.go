@@ -105,9 +105,7 @@ func (c *Config) Validate() error {
 	if c.CompartmentID == "" {
 		return fmt.Errorf("compartment_id is required")
 	}
-	if c.InstancePool.Size <= 0 {
-		return fmt.Errorf("instance_pool.size must be greater than 0")
-	}
+	// Note: Size can be 0 in config if overridden by command-line flag
 	if c.InstancePool.InstanceConfiguration.Shape == "" {
 		return fmt.Errorf("instance_pool.instance_configuration.shape is required")
 	}

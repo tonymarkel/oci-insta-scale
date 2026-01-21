@@ -1,118 +1,55 @@
 # OCI Authentication Configuration
-# Obtain these values from your OCI Console under User Settings -> API Keys
-
-tenancy_ocid: "ocid1.tenancy.oc1..aaaaaaaazvwxkafidkrx7cl6o6fmtkhqfnzg2c2vklo77g237wa2xvv75ohq"
-user_ocid: "ocid1.user.oc1..aaaaaaaamysq4g2loperq7uzmjjbqugb3n62wmsukv6gttpoghs2lopmtexq"
-fingerprint: "4a:df:0b:63:f9:f4:ae:52:1e:ca:2d:74:bc:7b:5d:02"
-private_key_path: "/Users/tomarkel/.oci/tomarkelkaltura.pem"
-region: "us-phoenix-1"  # or us-ashburn-1, eu-frankfurt-1, etc.
+tenancy_ocid: "ocid1.tenancy.oc1...aa"
+user_ocid: "ocid1.user.oc1...aa"
+fingerprint: "aa:bb:cc:dd:ee:ff:00:11:22:33:44:55:66:77:88:99"
+private_key_path: "/path/to/private/key.pem"
+region: "us-ashburn-1"
 
 # Compartment where resources will be created
-compartment_id: "ocid1.compartment.oc1..aaaaaaaaqrh2fgi5jycaurey53m64lhrou4peu6ffq7mgu2lua74iylb3ata"
+compartment_id: "ocid1.compartment.oc1...aa"
 
 # Instance Pool Configuration
 instance_pool:
-  display_name: "my-app-instance-pool"
-  size: 100  # Number of VM instances to create
+  display_name: "my-instance-pool"
+  size: 5  # Set to 0 to override with --count flag
   
   # Instance Configuration - defines what each VM looks like
   instance_configuration:
-    display_name: "my-app-instance-config"
+    display_name: "my-instance-config"
     
-    # VM Shape - see available shapes in OCI Console
+    # VM Shape
     shape: "VM.Standard.E4.Flex"
     
-    # For flexible shapes, specify OCPUs and memory
+    # For flexible shapes
     shape_config:
-      ocpus: 1          # Number of OCPUs (1-64)
-      memory_in_gbs: 6  # Memory in GB (1-1024, must be proportional to OCPUs)
+      ocpus: 1
+      memory_in_gbs: 6
     
-    # Image OCID - the OS image to use
-    # Find image OCIDs: oci compute image list --compartment-id <id>
+    # Image OCID
     image_id: "ocid1.image.oc1.iad.aaaaaaaazigqixefhjb6jew2etuzox5erpff6wjtjhe5lzextgxm76jymz2q"
     
-    # Subnet where VMs will be created
+    # Subnet
     subnet_id: "ocid1.subnet.oc1.iad.aaaaaaaapxzkqelfl3mspcka3whu4puolcdfkr6xffch7jkcuvfla4z46tha"
     
-    # Whether to assign public IPs to instances
+    # Public IP
     assign_public_ip: true
     
-    # SSH public key(s) for instance access (optional)
-    # Can be a single key or multiple keys separated by newlines
+    # SSH Keys
     ssh_authorized_keys: |
-      ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCmO4xz6XnbRWdVZStWMxTGqy52hG9/kjxagEI3ZX1gevqbvKH7hhh6sNcScuraTKomk0kk6d5Azc85XZYsEvETU4ENvEUV6dhuEdCWmK7afvdoPQb82R8SqDs/6Wdr/BxBDcqYYya2VpAJ31xn5d0TfHZXZbm/fVoPemXq/fWW3QMLFmgGoCNPjgACYlxliY2ecrpvw2Uetk7HvpDXNxMXaGGvaZKVZfEj2PW/SRI0jGvlJN+1nI16C4d7qPXPPI+ix63tcLa4qSdsEsjcCsiImauG+bV1saeRH6DM11KvlQul4GuCOSyNh1MvR8vxfI3++CkTq86ApReInHYcn8KJt4zndYcdADIU1KZDlGxDFhDSGNj0maXgnIU+l/BC1S/V/6Y4BZFJi5JAPzYz0DO8IALFiKi+l2af01Llx4OhVjaNUVRClTmjpxFzIq19UUc5nX91HMvLPFfA3ENAouadfE13f2pQ+LrKw0Zxzvu2XrUAtKs2i7MX35/4+eWFZYc= tomarkel@tomarkel-mac
+      ssh-rsa AAAAB3NzaC1yc2EAAAA...2pQ+LrKw0Zxzvu2XrUAtKs2i7MX35/4+eWFZYc=
     
-    # Cloud-init user data script (optional, base64 encoded)
-    # Example: echo "#!/bin/bash\necho 'Hello World'" | base64
-    user_data: ""
-    
-    # Custom metadata (optional)
+    # Metadata
     metadata:
-      application: "my-app"
+      application: "oci-insta-scale"
       environment: "production"
-      owner: "team-name"
     
-    # Freeform tags (optional)
+    # Tags
     freeform_tags:
-      Project: "MyProject"
-      CostCenter: "Engineering"
-      Environment: "Production"
-    
-    # Defined tags (optional)
-    # defined_tags:
-    #   Operations:
-    #     Environment: "Production"
-    #     CostCenter: "12345"
+      Project: "OCI-Insta-Scale"
+      ManagedBy: "automation"
   
   # Placement Configuration - where to place instances
-  # Define one or more availability domains
   placement:
     - availability_domain: "rgiR:US-ASHBURN-AD-1"
     - availability_domain: "rgiR:US-ASHBURN-AD-2"
     - availability_domain: "rgiR:US-ASHBURN-AD-3"
-      fault_domains:  # Optional: specify fault domains for HA
-        - "FAULT-DOMAIN-1"
-        - "FAULT-DOMAIN-2"
-        - "FAULT-DOMAIN-3"
-    # Uncomment to use multiple ADs:
-    # - availability_domain: "IYiP:PHX-AD-2"
-    # - availability_domain: "IYiP:PHX-AD-3"
-  
-  # Load Balancer Configuration (optional)
-  # Attach instances to a load balancer backend set
-  # load_balancers:
-  #   - load_balancer_id: "ocid1.loadbalancer.oc1.phx.aaaaaaaxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-  #     backend_set_name: "backend-set-1"
-  #     port: 80
-  #     vnic_selection: "PrimaryVnic"
-
----
-
-# Additional Configuration Examples:
-
-# Fixed Shape Example:
-# instance_configuration:
-#   shape: "VM.Standard2.1"
-#   # No shape_config needed for fixed shapes
-
-# Bare Metal Example:
-# instance_configuration:
-#   shape: "BM.Standard2.52"
-
-# ARM-based Shape Example:
-# instance_configuration:
-#   shape: "VM.Standard.A1.Flex"
-#   shape_config:
-#     ocpus: 4
-#     memory_in_gbs: 24
-
-# Multiple Load Balancers:
-# load_balancers:
-#   - load_balancer_id: "ocid1.loadbalancer.oc1.phx.aaaaa..."
-#     backend_set_name: "web-backend"
-#     port: 80
-#     vnic_selection: "PrimaryVnic"
-#   - load_balancer_id: "ocid1.loadbalancer.oc1.phx.aaaaa..."
-#     backend_set_name: "api-backend"
-#     port: 8080
-#     vnic_selection: "PrimaryVnic"
